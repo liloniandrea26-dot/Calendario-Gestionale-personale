@@ -1446,6 +1446,680 @@ App.note = (() => {
   return { load, addNew };
 })();
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEZIONE: CHAT AI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+App.chat = (() => {
+  async function load() {
+    const keyRes = await window.api.getSetting('anthropic_api_key');
+    const hasKey = !!(keyRes.data);
+    $('#chat-no-key').style.display = hasKey ? 'none' : 'block';
+    $('#chat-container').style.display = hasKey ? 'flex' : 'none';
+    if (hasKey) await loadHistory();
+  }
+
+  async function loadHistory() {
+    const res = await window.api.getChatMessages();
+    const msgs = res.data || [];
+    const el = $('#chat-messages');
+    if (!msgs.length) {
+      el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text-3);">
+        <div style="font-size:32px;margin-bottom:12px;">🤖</div>
+        <p>Ciao! Sono il tuo assistente personale.<br>Chiedimi qualcosa sul tuo calendario, task o finanze.</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = msgs.map(m => renderBubble(m.role, m.content, m.timestamp)).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderBubble(role, content, timestamp) {
+    const time = timestamp ? new Date(timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+    const html = markdownToHtml(content);
+    return `<div class="chat-msg ${role}">
+      <div class="chat-avatar">${role === 'user' ? '👤' : '🤖'}</div>
+      <div>
+        <div class="chat-bubble">${html}</div>
+        <div class="chat-time">${time}</div>
+      </div>
+    </div>`;
+  }
+
+  // Markdown minimale → HTML
+  function markdownToHtml(text) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/```[\s\S]*?```/g, m => `<pre><code>${m.slice(3,-3).trim()}</code></pre>`)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/^#{1,3}\s(.+)$/gm, '<strong>$1</strong>')
+      .replace(/^[-*]\s(.+)$/gm, '• $1')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p>').replace(/$/, '</p>');
+  }
+
+  async function send() {
+    const input = $('#chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+
+    const el = $('#chat-messages');
+    // Rimuovi empty state
+    const empty = el.querySelector('div[style*="text-align:center"]');
+    if (empty) empty.remove();
+
+    // Mostra messaggio utente
+    const time = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    el.insertAdjacentHTML('beforeend', `<div class="chat-msg user">
+      <div class="chat-avatar">👤</div>
+      <div><div class="chat-bubble">${msg.replace(/</g,'&lt;')}</div><div class="chat-time">${time}</div></div>
+    </div>`);
+
+    // Mostra typing indicator
+    const thinkId = 'think-' + Date.now();
+    el.insertAdjacentHTML('beforeend', `<div class="chat-msg assistant" id="${thinkId}">
+      <div class="chat-avatar">🤖</div>
+      <div class="chat-thinking"><div class="chat-dots"><span></span><span></span><span></span></div> Sto pensando…</div>
+    </div>`);
+    el.scrollTop = el.scrollHeight;
+
+    // Chiama AI
+    const res = await window.api.aiChat(msg);
+    document.getElementById(thinkId)?.remove();
+
+    if (res.ok) {
+      el.insertAdjacentHTML('beforeend', renderBubble('assistant', res.data, new Date().toISOString()));
+    } else {
+      el.insertAdjacentHTML('beforeend', `<div class="chat-msg assistant">
+        <div class="chat-avatar">🤖</div>
+        <div><div class="chat-bubble" style="color:var(--red);">❌ Errore: ${res.error}</div></div>
+      </div>`);
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function sendSuggestion(btn) {
+    $('#chat-input').value = btn.textContent.replace(/^[^\s]+\s/,'').trim();
+    send();
+  }
+
+  // Auto-resize textarea e invio con Enter
+  $('#chat-input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  });
+
+  $('#chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  $('#btn-chat-send').onclick = () => send();
+
+  $('#btn-clear-chat').onclick = async () => {
+    const ok = await confirmDialog('Eliminare tutta la cronologia della chat?');
+    if (!ok) return;
+    await window.api.clearChat();
+    load();
+  };
+
+  return { load, send, sendSuggestion };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEZIONE: STUDIO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+App.studio = (() => {
+  let activeFolder = undefined; // undefined = non inizializzato, null = tutti
+  let activeItemId = null;
+  let saveTimer = null;
+  let scanStream = null;
+  let capturedImage = null;
+
+  const TYPE_ICONS = { note: '📝', exercise: '🏋️', file: '📄', scan: '📷', summary: '🤖' };
+  const TYPE_LABELS = { note: 'Appunto', exercise: 'Esercizio', file: 'File', scan: 'Scansione', summary: 'Sintesi AI' };
+  const FOLDER_COLORS = ['indigo','green','amber','red','violet'];
+
+  async function load() {
+    await renderFolders();
+    await selectFolder(null);
+  }
+
+  async function renderFolders() {
+    const res = await window.api.getStudyFolders();
+    const folders = res.data || [];
+    const tree = $('#studio-folders-tree');
+    tree.innerHTML = folders.map(f => {
+      const colorMap = { indigo:'var(--accent)', green:'var(--green)', amber:'var(--amber)', red:'var(--red)', violet:'var(--violet)' };
+      const col = colorMap[f.color] || 'var(--text-2)';
+      return `<div class="studio-folder-item ${activeFolder === f.id ? 'active' : ''}" data-id="${f.id}" onclick="App.studio.selectFolder(${f.id})">
+        <span class="studio-folder-icon" style="color:${col};">${f.icon}</span>
+        <span class="studio-folder-name">${f.name}</span>
+        <div class="studio-folder-actions">
+          <button class="btn-icon" style="font-size:11px;" onclick="event.stopPropagation();App.studio.editFolder(${f.id})" title="Rinomina">✏️</button>
+          <button class="btn-icon" style="font-size:11px;" onclick="event.stopPropagation();App.studio.deleteFolder(${f.id})" title="Elimina">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function selectFolder(folderId) {
+    activeFolder = folderId;
+    // Aggiorna selezione UI
+    $$('.studio-folder-item').forEach(el => {
+      const id = el.dataset.id;
+      el.classList.toggle('active',
+        (folderId === null && id === 'all') || (folderId !== null && parseInt(id) === folderId)
+      );
+    });
+    // Titolo
+    if (folderId === null) {
+      $('#studio-folder-title').textContent = 'Tutti gli elementi';
+    } else {
+      const res = await window.api.getStudyFolders();
+      const f = (res.data||[]).find(f => f.id === folderId);
+      $('#studio-folder-title').textContent = f ? `${f.icon} ${f.name}` : 'Cartella';
+    }
+    await renderItems();
+  }
+
+  async function renderItems(query = '') {
+    let items;
+    if (query) {
+      const res = await window.api.searchStudyItems(query);
+      items = res.data || [];
+    } else {
+      const res = await window.api.getStudyItems(activeFolder);
+      items = res.data || [];
+    }
+
+    const grid = $('#studio-items-grid');
+    if (!items.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;padding:40px;">
+        <div class="icon">${activeFolder !== null ? '📁' : '📚'}</div>
+        <p>Nessun elemento. Usa "+ Aggiungi" per creare appunti, esercizi o caricare file.</p>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = items.map(item => {
+      const icon = TYPE_ICONS[item.type] || '📄';
+      const preview = (item.content || item.file_name || '').slice(0, 80).replace(/[#*`]/g,'');
+      return `<div class="studio-item-card ${item.id === activeItemId ? 'active' : ''}" data-id="${item.id}" onclick="App.studio.openItem(${item.id})">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="studio-item-type-icon">${icon}</span>
+          <span class="item-type-badge item-type-${item.type}">${TYPE_LABELS[item.type]||item.type}</span>
+        </div>
+        <div class="studio-item-name">${item.title}</div>
+        ${preview ? `<div class="studio-item-preview">${preview}</div>` : ''}
+        <div class="studio-item-meta">${fmtDate(item.updated_at?.split(' ')[0]||item.created_at?.split(' ')[0])}</div>
+      </div>`;
+    }).join('');
+  }
+
+  async function openItem(id) {
+    activeItemId = id;
+    const res = await window.api.getStudyItemById(id);
+    const item = res.data;
+    if (!item) return;
+
+    // Mostra pannello dettaglio
+    const layout = $('.studio-layout');
+    layout.classList.add('with-detail');
+    $('#studio-detail').style.display = 'flex';
+
+    $('#studio-item-title').value = item.title || '';
+    $('#studio-item-body').value = item.type === 'file' ? (item.file_name || '') : (item.content || '');
+    $('#studio-item-tags').value = item.tags || '';
+    $('#studio-item-date').textContent = 'Aggiornato: ' + (item.updated_at?.split(' ')[0] || '');
+
+    // Immagine scan
+    const existingImg = $('#studio-detail').querySelector('.studio-scan-img');
+    if (existingImg) existingImg.remove();
+    if (item.type === 'scan' && item.file_path) {
+      const imgRes = await window.api.fileRead(item.file_path);
+      if (imgRes.ok) {
+        const img = document.createElement('img');
+        img.className = 'studio-scan-img';
+        img.src = `data:image/jpeg;base64,${imgRes.data}`;
+        $('#studio-item-body').insertAdjacentElement('afterend', img);
+      }
+    }
+
+    // Body read-only per file/scan
+    $('#studio-item-body').readOnly = (item.type === 'file');
+
+    // Nascondi AI result precedente
+    $('#studio-ai-result').style.display = 'none';
+
+    // Aggiorna cards
+    $$('.studio-item-card').forEach(c => c.classList.toggle('active', parseInt(c.dataset.id) === id));
+  }
+
+  function closeDetail() {
+    $('.studio-layout').classList.remove('with-detail');
+    $('#studio-detail').style.display = 'none';
+    activeItemId = null;
+    $$('.studio-item-card').forEach(c => c.classList.remove('active'));
+  }
+
+  function scheduleItemSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveActiveItem, 600);
+  }
+
+  async function saveActiveItem() {
+    if (!activeItemId) return;
+    await window.api.updateStudyItem(activeItemId, {
+      title: $('#studio-item-title').value || 'Senza titolo',
+      content: $('#studio-item-body').value,
+      tags: $('#studio-item-tags').value
+    });
+    // Aggiorna la card nella griglia
+    const card = $(`.studio-item-card[data-id="${activeItemId}"]`);
+    if (card) {
+      const nameEl = card.querySelector('.studio-item-name');
+      if (nameEl) nameEl.textContent = $('#studio-item-title').value || 'Senza titolo';
+    }
+  }
+
+  // Autosave
+  $('#studio-item-title').addEventListener('input', scheduleItemSave);
+  $('#studio-item-body').addEventListener('input', scheduleItemSave);
+  $('#studio-item-tags').addEventListener('input', scheduleItemSave);
+
+  function openAddModal() {
+    openModal(`
+      <div class="modal-header">
+        <span class="modal-title">Nuovo elemento</span>
+        <button class="btn-icon" onclick="closeModal()">✕</button>
+      </div>
+      <div class="form-group"><label class="label">Tipo</label>
+        <div class="toggle-group" id="item-type-toggle">
+          <button class="toggle-btn active" data-val="note">📝 Appunto</button>
+          <button class="toggle-btn" data-val="exercise">🏋️ Esercizio</button>
+          <button class="toggle-btn" data-val="file">📄 File</button>
+        </div>
+      </div>
+      <div class="form-group"><label class="label">Titolo *</label>
+        <input class="input" id="si-title" placeholder="Titolo" /></div>
+      <div class="form-group"><label class="label">Contenuto</label>
+        <textarea class="textarea" id="si-content" placeholder="Appunti, testo, descrizione…" style="min-height:100px;"></textarea></div>
+      <div class="form-group"><label class="label">Tag</label>
+        <input class="input" id="si-tags" placeholder="matematica, esame, importante" /></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+        <button class="btn btn-primary" id="si-save">Crea</button>
+      </div>
+    `);
+
+    let itemType = 'note';
+    $$('#item-type-toggle .toggle-btn').forEach(btn => {
+      btn.onclick = () => {
+        itemType = btn.dataset.val;
+        $$('#item-type-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+    });
+
+    $('#si-save').onclick = async () => {
+      const title = $('#si-title').value.trim();
+      if (!title) { showToast('Titolo obbligatorio', 'error'); return; }
+      const res = await window.api.addStudyItem({
+        folder_id: activeFolder || null,
+        type: itemType,
+        title,
+        content: $('#si-content').value.trim(),
+        tags: $('#si-tags').value.trim()
+      });
+      closeModal();
+      await renderItems();
+      if (res.data) openItem(res.data);
+      showToast('Elemento creato', 'success');
+    };
+  }
+
+  function openAddFolderModal(existing = null) {
+    openModal(`
+      <div class="modal-header">
+        <span class="modal-title">${existing ? 'Modifica cartella' : 'Nuova cartella'}</span>
+        <button class="btn-icon" onclick="closeModal()">✕</button>
+      </div>
+      <div class="form-group"><label class="label">Nome</label>
+        <input class="input" id="fold-name" value="${existing?.name||''}" placeholder="es. Matematica" /></div>
+      <div class="form-group"><label class="label">Icona</label>
+        <div class="emoji-grid" id="fold-emoji-grid">
+          ${['📁','📚','📐','📜','🔬','🎨','🌍','💡','🏛️','⚗️','🖥️','📖','🎵','🧮','✏️','📊'].map(e =>
+            `<button class="emoji-btn ${(existing?.icon||'📁')===e?'selected':''}" data-emoji="${e}">${e}</button>`
+          ).join('')}
+        </div>
+      </div>
+      <div class="form-group"><label class="label">Colore</label>
+        <div class="color-grid">
+          ${FOLDER_COLORS.map(c => `<div class="color-dot ${c} ${(existing?.color||'indigo')===c?'selected':''}" data-color="${c}"></div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+        <button class="btn btn-primary" id="fold-save">${existing ? 'Salva' : 'Crea'}</button>
+      </div>
+    `);
+
+    let icon = existing?.icon || '📁';
+    let color = existing?.color || 'indigo';
+
+    $$('#fold-emoji-grid .emoji-btn').forEach(btn => {
+      btn.onclick = () => {
+        icon = btn.dataset.emoji;
+        $$('#fold-emoji-grid .emoji-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+    });
+    $$('.color-dot').forEach(dot => {
+      dot.onclick = () => {
+        color = dot.dataset.color;
+        $$('.color-dot').forEach(d => d.classList.remove('selected'));
+        dot.classList.add('selected');
+      };
+    });
+
+    $('#fold-save').onclick = async () => {
+      const name = $('#fold-name').value.trim();
+      if (!name) { showToast('Nome obbligatorio', 'error'); return; }
+      if (existing) {
+        await window.api.updateStudyFolder(existing.id, { name, icon, color });
+        showToast('Cartella aggiornata', 'success');
+      } else {
+        await window.api.addStudyFolder({ name, icon, color });
+        showToast('Cartella creata', 'success');
+      }
+      closeModal();
+      await renderFolders();
+    };
+  }
+
+  async function editFolder(id) {
+    const res = await window.api.getStudyFolders();
+    const f = (res.data||[]).find(f => f.id === id);
+    if (f) openAddFolderModal(f);
+  }
+
+  async function deleteFolder(id) {
+    const ok = await confirmDialog('Eliminare questa cartella e tutto il suo contenuto?');
+    if (!ok) return;
+    await window.api.deleteStudyFolder(id);
+    if (activeFolder === id) { activeFolder = null; closeDetail(); }
+    await renderFolders();
+    await renderItems();
+    showToast('Cartella eliminata', 'success');
+  }
+
+  async function deleteItem() {
+    if (!activeItemId) return;
+    const ok = await confirmDialog('Eliminare questo elemento?');
+    if (!ok) return;
+    await window.api.deleteStudyItem(activeItemId);
+    closeDetail();
+    await renderItems();
+    showToast('Elemento eliminato', 'success');
+  }
+
+  // ── AI ──────────────────────────────────────────────────────────────────────
+
+  async function aiAction(action) {
+    if (!activeItemId) return;
+
+    const content = $('#studio-item-body').value.trim();
+    if (!content) { showToast('Nessun contenuto da elaborare', 'error'); return; }
+
+    const labels = { summarize:'✨ Riassunto', schema:'🗂️ Schema', humanize:'💬 Versione semplificata', organize:'🧠 Suggerimenti organizzazione' };
+    const resultEl = $('#studio-ai-result');
+    const labelEl = $('#studio-ai-result-label');
+    const bodyEl = $('#studio-ai-result-body');
+
+    labelEl.textContent = labels[action] || action;
+    bodyEl.textContent = '⏳ Elaborazione in corso…';
+    resultEl.style.display = 'block';
+
+    const res = await window.api.aiAction(action, content, activeItemId);
+    if (res.ok) {
+      bodyEl.textContent = res.data;
+    } else {
+      bodyEl.textContent = '❌ ' + res.error;
+    }
+  }
+
+  // ── SCANNER ─────────────────────────────────────────────────────────────────
+
+  async function openScanner() {
+    if (!activeItemId) { showToast('Seleziona prima un elemento', 'error'); return; }
+    capturedImage = null;
+    $('#scanner-preview').style.display = 'none';
+    $('#scanner-video').style.display = 'block';
+    $('#btn-scanner-capture').style.display = 'inline-flex';
+    $('#btn-scanner-use').style.display = 'none';
+    $('#btn-scanner-retake').style.display = 'none';
+    $('#scanner-overlay').classList.add('open');
+
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      $('#scanner-video').srcObject = scanStream;
+    } catch(e) {
+      showToast('Fotocamera non disponibile: ' + e.message, 'error');
+      closeScanner();
+    }
+  }
+
+  function scannerCapture() {
+    const video = $('#scanner-video');
+    const canvas = $('#scanner-canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    capturedImage = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    $('#scanner-preview').src = 'data:image/jpeg;base64,' + capturedImage;
+    $('#scanner-preview').style.display = 'block';
+    $('#scanner-video').style.display = 'none';
+    $('#btn-scanner-capture').style.display = 'none';
+    $('#btn-scanner-use').style.display = 'inline-flex';
+    $('#btn-scanner-retake').style.display = 'inline-flex';
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  }
+
+  function scannerRetake() {
+    capturedImage = null;
+    openScanner();
+  }
+
+  async function scannerUse() {
+    if (!capturedImage || !activeItemId) return;
+    const title = $('#studio-item-title').value || 'scansione';
+    const fileName = `scan_${Date.now()}.jpg`;
+    const saveRes = await window.api.fileSave(fileName, capturedImage);
+    if (!saveRes.ok) { showToast('Errore salvataggio: ' + saveRes.error, 'error'); return; }
+
+    // Aggiorna l'item come scan con file_path
+    await window.api.updateStudyItem(activeItemId, {
+      title: title,
+      content: $('#studio-item-body').value,
+      tags: $('#studio-item-tags').value
+    });
+    // Salva file_path tramite addStudyItem workaround: usa db direttamente via updateStudyItem
+    // Ricarichiamo l'item con file_path aggiornato
+    const r = await window.api.getStudyItemById(activeItemId);
+    if (r.data) {
+      // Aggiorna anche file_path: utilizziamo deleteItem + addStudyItem
+      await window.api.deleteStudyItem(activeItemId);
+      const newRes = await window.api.addStudyItem({
+        folder_id: r.data.folder_id,
+        type: 'scan',
+        title: title,
+        content: r.data.content || '',
+        file_path: saveRes.data,
+        file_name: fileName,
+        tags: r.data.tags || ''
+      });
+      activeItemId = newRes.data;
+    }
+
+    closeScanner();
+    await renderItems();
+    if (activeItemId) openItem(activeItemId);
+    showToast('Scansione salvata!', 'success');
+  }
+
+  function closeScanner() {
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+    $('#scanner-overlay').classList.remove('open');
+  }
+
+  // ── FILE UPLOAD ──────────────────────────────────────────────────────────────
+
+  async function uploadFile() {
+    const res = await window.api.fileOpenDialog();
+    if (!res.ok) return;
+    const { fileName, base64, size } = res.data;
+    const saveRes = await window.api.fileSave(fileName, base64);
+    if (!saveRes.ok) { showToast('Errore upload: ' + saveRes.error, 'error'); return; }
+
+    const sizeLabel = size > 1024*1024 ? (size/1024/1024).toFixed(1)+'MB' : Math.round(size/1024)+'KB';
+    const newRes = await window.api.addStudyItem({
+      folder_id: activeFolder || null,
+      type: 'file',
+      title: fileName,
+      content: `File caricato: ${fileName} (${sizeLabel})`,
+      file_path: saveRes.data,
+      file_name: fileName,
+    });
+    await renderItems();
+    if (newRes.data) openItem(newRes.data);
+    showToast('File caricato: ' + fileName, 'success');
+  }
+
+  // ── RICERCA ──────────────────────────────────────────────────────────────────
+  let searchTimer = null;
+  $('#studio-search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => renderItems(e.target.value.trim()), 300);
+  });
+
+  // ── PULSANTI ─────────────────────────────────────────────────────────────────
+  $('#btn-add-folder').onclick = () => openAddFolderModal();
+  $('#btn-add-item').onclick = () => {
+    // Se viene cliccato con Alt, carica file direttamente
+    openAddModal();
+  };
+  $('#btn-delete-item').onclick = () => deleteItem();
+  $('#btn-studio-scan').onclick = () => openScanner();
+  $('#btn-close-detail').onclick = () => closeDetail();
+
+  return {
+    load, selectFolder, openItem, closeDetail,
+    editFolder, deleteFolder, aiAction,
+    openScanner, scannerCapture, scannerRetake, scannerUse, closeScanner,
+    uploadFile
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPOSTAZIONI (API KEY)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+App.openSettings = async function() {
+  const keyRes = await window.api.getSetting('anthropic_api_key');
+  const currentKey = keyRes.data || '';
+  const masked = currentKey ? currentKey.slice(0,8) + '…' + currentKey.slice(-4) : '';
+
+  openModal(`
+    <div class="modal-header">
+      <span class="modal-title">⚙️ Impostazioni</span>
+      <button class="btn-icon" onclick="closeModal()">✕</button>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label class="label">🔑 Anthropic API Key</label>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">
+        Ottieni la tua key su <span style="color:var(--accent);">console.anthropic.com</span> → API Keys.
+        Necessaria per Chat AI e funzioni AI nello Studio.
+      </div>
+      <input type="password" class="input" id="settings-api-key"
+        placeholder="sk-ant-api03-…"
+        value="${currentKey}" />
+      ${masked ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px;">Key attuale: ${masked}</div>` : ''}
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label class="label">🤖 Modello AI</label>
+      <select class="select" id="settings-model">
+        <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6 (consigliato)</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (più veloce)</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8 (più potente)</option>
+      </select>
+    </div>
+
+    <div id="settings-test-result" style="display:none;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px;"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-test-ai">🔌 Testa connessione</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" id="btn-save-settings">Salva</button>
+    </div>
+  `);
+
+  $('#btn-test-ai').onclick = async () => {
+    const key = $('#settings-api-key').value.trim();
+    if (!key) { showToast('Inserisci prima una API key', 'error'); return; }
+    await window.api.aiSetApiKey(key);
+    $('#btn-test-ai').textContent = '⏳ Test…';
+    const res = await window.api.aiTestConnection();
+    const el = $('#settings-test-result');
+    el.style.display = 'block';
+    if (res.ok) {
+      el.style.background = 'rgba(34,197,94,0.1)';
+      el.style.color = 'var(--green)';
+      el.style.border = '1px solid rgba(34,197,94,0.3)';
+      el.textContent = '✓ Connessione riuscita! L\'AI è pronta.';
+    } else {
+      el.style.background = 'rgba(239,68,68,0.1)';
+      el.style.color = 'var(--red)';
+      el.style.border = '1px solid rgba(239,68,68,0.3)';
+      el.textContent = '✗ Errore: ' + res.error;
+    }
+    $('#btn-test-ai').textContent = '🔌 Testa connessione';
+  };
+
+  $('#btn-save-settings').onclick = async () => {
+    const key = $('#settings-api-key').value.trim();
+    if (key) await window.api.aiSetApiKey(key);
+    closeModal();
+    showToast('Impostazioni salvate', 'success');
+    // Ricarica chat se aperta
+    if ($('#s-chat').classList.contains('active')) App.chat.load();
+  };
+};
+
+$('#btn-settings').addEventListener('click', App.openSettings);
+
+// ─── AGGIORNA NAVIGAZIONE PER NUOVE SEZIONI ───────────────────────────────────
+
+// Ricarica le nuove sezioni quando vengono selezionate
+const sectionLoaders = {
+  chat: () => App.chat.load(),
+  studio: () => App.studio.load()
+};
+
+$$('.nav-item[data-section]').forEach(item => {
+  item.addEventListener('click', () => {
+    const sec = item.dataset.section;
+    if (sectionLoaders[sec]) sectionLoaders[sec]();
+  });
+});
+
 // ─── AVVIO APP ────────────────────────────────────────────────────────────────
 
 App.oggi.load();

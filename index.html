@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WeekOrganizer</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Chart.js per grafici finanze -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -14,9 +13,9 @@
 <div id="titlebar">
   <span class="title">WeekOrganizer</span>
   <div class="win-controls">
-    <button class="win-btn" id="btn-minimize" title="Minimizza">&#8722;</button>
-    <button class="win-btn" id="btn-maximize" title="Maximizza">&#9744;</button>
-    <button class="win-btn close" id="btn-close" title="Chiudi">&#10005;</button>
+    <button class="win-btn" id="btn-minimize">&#8722;</button>
+    <button class="win-btn" id="btn-maximize">&#9744;</button>
+    <button class="win-btn close" id="btn-close">&#10005;</button>
   </div>
 </div>
 
@@ -33,84 +32,49 @@
 
     <nav class="sidebar-nav">
       <div class="nav-label">Principale</div>
-      <div class="nav-item active" data-section="oggi">
-        <span class="icon">🏠</span> Oggi
-      </div>
-      <div class="nav-item" data-section="calendario">
-        <span class="icon">📅</span> Calendario
-      </div>
-      <div class="nav-item" data-section="finanze">
-        <span class="icon">💰</span> Finanze
-      </div>
-      <div class="nav-item" data-section="sport">
-        <span class="icon">🏃</span> Sport
-      </div>
-      <div class="nav-item" data-section="lavoro">
-        <span class="icon">💼</span> Lavoro
-      </div>
-      <div class="nav-item" data-section="abitudini">
-        <span class="icon">✅</span> Abitudini
-      </div>
-      <div class="nav-item" data-section="note">
-        <span class="icon">📝</span> Note
-      </div>
+      <div class="nav-item active" data-section="oggi"><span class="icon">🏠</span> Oggi</div>
+      <div class="nav-item" data-section="calendario"><span class="icon">📅</span> Calendario</div>
+      <div class="nav-item" data-section="finanze"><span class="icon">💰</span> Finanze</div>
+      <div class="nav-item" data-section="sport"><span class="icon">🏃</span> Sport</div>
+      <div class="nav-item" data-section="lavoro"><span class="icon">💼</span> Lavoro</div>
+      <div class="nav-item" data-section="abitudini"><span class="icon">✅</span> Abitudini</div>
+      <div class="nav-item" data-section="note"><span class="icon">📝</span> Note</div>
+
+      <div class="nav-label" style="margin-top:8px;">Intelligenza</div>
+      <div class="nav-item" data-section="chat"><span class="icon">🤖</span> Chat AI</div>
+      <div class="nav-item" data-section="studio"><span class="icon">📚</span> Studio</div>
     </nav>
 
     <div class="sidebar-footer">
-      <div class="nav-item" id="btn-export">
-        <span class="icon">📤</span> Esporta dati
-      </div>
+      <div class="nav-item" id="btn-settings"><span class="icon">⚙️</span> Impostazioni</div>
+      <div class="nav-item" id="btn-export"><span class="icon">📤</span> Esporta dati</div>
     </div>
   </aside>
 
   <!-- CONTENUTO PRINCIPALE -->
   <main id="content">
 
-    <!-- ── OGGI ────────────────────────────────────────────────────────── -->
+    <!-- ── OGGI ─────────────────────────────────────────────────────────── -->
     <section id="s-oggi" class="section active">
       <div class="section-header">
         <div>
           <div class="today-date-header" id="oggi-date-header"></div>
           <div class="section-subtitle">Riepilogo della tua giornata</div>
         </div>
-        <button class="btn btn-primary" id="btn-quick-add">
-          + Aggiungi rapido
-        </button>
+        <button class="btn btn-primary" id="btn-quick-add">+ Aggiungi rapido</button>
       </div>
-
       <div class="today-grid">
-        <!-- Oggi: eventi -->
-        <div class="card">
-          <div class="card-title">📅 Oggi</div>
-          <div id="oggi-events"></div>
-        </div>
-
-        <!-- Task di oggi -->
-        <div class="card">
-          <div class="card-title">✅ Da fare oggi</div>
-          <div id="oggi-tasks"></div>
-        </div>
-
-        <!-- Abitudini -->
-        <div class="card">
-          <div class="card-title">🔁 Abitudini</div>
-          <div id="oggi-habits"></div>
-        </div>
-
-        <!-- Saldo rapido -->
-        <div class="card">
-          <div class="card-title">💰 Saldo del mese</div>
-          <div id="oggi-finance"></div>
-        </div>
+        <div class="card"><div class="card-title">📅 Oggi</div><div id="oggi-events"></div></div>
+        <div class="card"><div class="card-title">✅ Da fare oggi</div><div id="oggi-tasks"></div></div>
+        <div class="card"><div class="card-title">🔁 Abitudini</div><div id="oggi-habits"></div></div>
+        <div class="card"><div class="card-title">💰 Saldo del mese</div><div id="oggi-finance"></div></div>
       </div>
     </section>
 
-    <!-- ── CALENDARIO ───────────────────────────────────────────────────── -->
+    <!-- ── CALENDARIO ────────────────────────────────────────────────────── -->
     <section id="s-calendario" class="section">
       <div class="section-header">
-        <div>
-          <div class="section-title">Calendario</div>
-        </div>
+        <div class="section-title">Calendario</div>
         <div style="display:flex;gap:10px;align-items:center;">
           <div class="toggle-group" style="width:200px;">
             <button class="toggle-btn active" id="cal-view-week" onclick="App.cal.setView('week')">Settimana</button>
@@ -119,18 +83,16 @@
           <button class="btn btn-primary" id="btn-add-event">+ Evento</button>
         </div>
       </div>
-
       <div class="nav-controls" style="margin-bottom:var(--gap);">
         <button class="btn btn-ghost btn-sm" id="cal-prev">&#8592;</button>
         <span id="cal-period-label"></span>
         <button class="btn btn-ghost btn-sm" id="cal-next">&#8594;</button>
         <button class="btn btn-ghost btn-sm" id="cal-today-btn">Oggi</button>
       </div>
-
       <div id="cal-container"></div>
     </section>
 
-    <!-- ── FINANZE ──────────────────────────────────────────────────────── -->
+    <!-- ── FINANZE ───────────────────────────────────────────────────────── -->
     <section id="s-finanze" class="section">
       <div class="section-header">
         <div class="section-title">Finanze</div>
@@ -143,73 +105,38 @@
           <button class="btn btn-primary" id="btn-add-tx">+ Transazione</button>
         </div>
       </div>
-
-      <!-- KPI -->
       <div class="grid-3" style="margin-bottom:var(--gap);">
-        <div class="kpi-card">
-          <div class="kpi-label">Entrate</div>
-          <div class="kpi-value green" id="fin-income">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Uscite</div>
-          <div class="kpi-value red" id="fin-expense">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Saldo</div>
-          <div class="kpi-value" id="fin-balance">—</div>
-        </div>
+        <div class="kpi-card"><div class="kpi-label">Entrate</div><div class="kpi-value green" id="fin-income">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Uscite</div><div class="kpi-value red" id="fin-expense">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Saldo</div><div class="kpi-value" id="fin-balance">—</div></div>
       </div>
-
-      <!-- Grafici -->
       <div class="grid-2" style="margin-bottom:var(--gap);">
-        <div class="card">
-          <div class="card-title">Entrate vs Uscite per settimana</div>
-          <div class="chart-container">
-            <canvas id="chart-weekly"></canvas>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Uscite per categoria</div>
-          <div class="chart-container">
-            <canvas id="chart-categories"></canvas>
-          </div>
-        </div>
+        <div class="card"><div class="card-title">Entrate vs Uscite per settimana</div><div class="chart-container"><canvas id="chart-weekly"></canvas></div></div>
+        <div class="card"><div class="card-title">Uscite per categoria</div><div class="chart-container"><canvas id="chart-categories"></canvas></div></div>
       </div>
-
-      <!-- Filtri + tabella -->
       <div class="card">
         <div class="filter-bar" style="margin-bottom:12px;">
           <select class="select" style="width:140px;" id="fin-filter-type">
-            <option value="">Tutti i tipi</option>
-            <option value="income">Solo entrate</option>
-            <option value="expense">Solo uscite</option>
+            <option value="">Tutti i tipi</option><option value="income">Solo entrate</option><option value="expense">Solo uscite</option>
           </select>
           <select class="select" style="width:160px;" id="fin-filter-method">
-            <option value="">Tutti i metodi</option>
-            <option value="cash">Contanti</option>
-            <option value="debit">Carta di debito</option>
-            <option value="credit">Carta di credito</option>
+            <option value="">Tutti i metodi</option><option value="cash">Contanti</option><option value="debit">Carta di debito</option><option value="credit">Carta di credito</option>
           </select>
         </div>
         <div class="table-wrap">
           <table id="fin-table">
-            <thead>
-              <tr>
-                <th onclick="App.fin.sortBy('date')">Data ↕</th>
-                <th>Descrizione</th>
-                <th>Categoria</th>
-                <th>Metodo</th>
-                <th onclick="App.fin.sortBy('amount')" style="text-align:right;">Importo ↕</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th onclick="App.fin.sortBy('date')">Data ↕</th><th>Descrizione</th>
+              <th>Categoria</th><th>Metodo</th>
+              <th onclick="App.fin.sortBy('amount')" style="text-align:right;">Importo ↕</th><th></th>
+            </tr></thead>
             <tbody id="fin-table-body"></tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- ── SPORT ────────────────────────────────────────────────────────── -->
+    <!-- ── SPORT ─────────────────────────────────────────────────────────── -->
     <section id="s-sport" class="section">
       <div class="section-header">
         <div class="section-title">Sport</div>
@@ -222,38 +149,18 @@
           <button class="btn btn-primary" id="btn-add-sport">+ Sessione</button>
         </div>
       </div>
-
-      <!-- KPI -->
       <div class="grid-3" style="margin-bottom:var(--gap);">
-        <div class="kpi-card">
-          <div class="kpi-label">Sessioni questo mese</div>
-          <div class="kpi-value accent" id="sport-count">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Ore totali</div>
-          <div class="kpi-value accent" id="sport-hours">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Streak attuale</div>
-          <div class="kpi-value amber" id="sport-streak">—</div>
-        </div>
+        <div class="kpi-card"><div class="kpi-label">Sessioni questo mese</div><div class="kpi-value accent" id="sport-count">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Ore totali</div><div class="kpi-value accent" id="sport-hours">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Streak attuale</div><div class="kpi-value amber" id="sport-streak">—</div></div>
       </div>
-
       <div class="grid-2">
-        <!-- Mini calendario -->
-        <div class="card">
-          <div class="card-title">Calendario mensile</div>
-          <div id="sport-mini-cal"></div>
-        </div>
-        <!-- Lista sessioni -->
-        <div class="card">
-          <div class="card-title">Sessioni del mese</div>
-          <div id="sport-sessions-list"></div>
-        </div>
+        <div class="card"><div class="card-title">Calendario mensile</div><div id="sport-mini-cal"></div></div>
+        <div class="card"><div class="card-title">Sessioni del mese</div><div id="sport-sessions-list"></div></div>
       </div>
     </section>
 
-    <!-- ── LAVORO ───────────────────────────────────────────────────────── -->
+    <!-- ── LAVORO ────────────────────────────────────────────────────────── -->
     <section id="s-lavoro" class="section">
       <div class="section-header">
         <div class="section-title">Lavoro</div>
@@ -266,27 +173,17 @@
           <button class="btn btn-primary" id="btn-add-task">+ Task</button>
         </div>
       </div>
-
       <div class="kanban-board" id="kanban-board">
         <div class="kanban-col" data-status="todo" id="col-todo">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title">Da fare</span>
-            <span class="kanban-count" id="count-todo">0</span>
-          </div>
+          <div class="kanban-col-header"><span class="kanban-col-title">Da fare</span><span class="kanban-count" id="count-todo">0</span></div>
           <div class="kanban-cards" id="cards-todo"></div>
         </div>
         <div class="kanban-col" data-status="inprogress" id="col-inprogress">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title">In corso</span>
-            <span class="kanban-count" id="count-inprogress">0</span>
-          </div>
+          <div class="kanban-col-header"><span class="kanban-col-title">In corso</span><span class="kanban-count" id="count-inprogress">0</span></div>
           <div class="kanban-cards" id="cards-inprogress"></div>
         </div>
         <div class="kanban-col" data-status="done" id="col-done">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title" style="color:var(--green)">Completati</span>
-            <span class="kanban-count" id="count-done">0</span>
-          </div>
+          <div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--green)">Completati</span><span class="kanban-count" id="count-done">0</span></div>
           <div class="kanban-cards" id="cards-done"></div>
         </div>
       </div>
@@ -305,7 +202,6 @@
           <button class="btn btn-primary" id="btn-add-habit">+ Abitudine</button>
         </div>
       </div>
-
       <div class="card habits-grid">
         <table class="habits-table" id="habits-table">
           <thead id="habits-thead"></thead>
@@ -314,28 +210,19 @@
       </div>
     </section>
 
-    <!-- ── NOTE ─────────────────────────────────────────────────────────── -->
+    <!-- ── NOTE ──────────────────────────────────────────────────────────── -->
     <section id="s-note" class="section">
       <div class="section-header">
         <div class="section-title">Note</div>
         <button class="btn btn-primary" id="btn-add-note">+ Nota</button>
       </div>
-
       <div class="notes-layout">
-        <!-- Lista -->
         <div class="notes-list">
-          <div class="notes-search-wrap">
-            <input type="text" class="input" id="notes-search" placeholder="🔍 Cerca note…" />
-          </div>
+          <div class="notes-search-wrap"><input type="text" class="input" id="notes-search" placeholder="🔍 Cerca note…" /></div>
           <div class="notes-items" id="notes-items"></div>
         </div>
-
-        <!-- Editor -->
         <div class="notes-editor" id="notes-editor">
-          <div class="empty-state" id="notes-empty" style="margin:auto;">
-            <div class="icon">📝</div>
-            <p>Seleziona una nota o creane una nuova</p>
-          </div>
+          <div class="empty-state" id="notes-empty" style="margin:auto;"><div class="icon">📝</div><p>Seleziona una nota o creane una nuova</p></div>
           <input type="text" class="note-title-input" id="note-title" placeholder="Titolo nota" style="display:none;" />
           <textarea class="note-body-input" id="note-body" placeholder="Scrivi qui… (supporta Markdown)" style="display:none;"></textarea>
           <div class="note-toolbar" id="note-toolbar" style="display:none;">
@@ -348,13 +235,137 @@
       </div>
     </section>
 
+    <!-- ── CHAT AI ────────────────────────────────────────────────────────── -->
+    <section id="s-chat" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Chat AI</div>
+          <div class="section-subtitle">Parla con il tuo calendario e chiedi qualsiasi cosa</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="btn-clear-chat">🗑️ Pulisci chat</button>
+        </div>
+      </div>
+
+      <!-- Stato API key non configurata -->
+      <div id="chat-no-key" class="card" style="display:none;text-align:center;padding:40px;">
+        <div style="font-size:40px;margin-bottom:12px;">🔑</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text-1);margin-bottom:8px;">API Key non configurata</div>
+        <div style="color:var(--text-2);margin-bottom:20px;">Per usare la Chat AI inserisci la tua Anthropic API key nelle impostazioni.</div>
+        <button class="btn btn-primary" onclick="App.openSettings()">⚙️ Vai alle Impostazioni</button>
+      </div>
+
+      <div id="chat-container" class="chat-container" style="display:none;">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-area">
+          <div class="chat-suggestions" id="chat-suggestions">
+            <button class="chat-suggestion" onclick="App.chat.sendSuggestion(this)">📅 Cosa ho in agenda oggi?</button>
+            <button class="chat-suggestion" onclick="App.chat.sendSuggestion(this)">✅ Quali task ho in sospeso?</button>
+            <button class="chat-suggestion" onclick="App.chat.sendSuggestion(this)">💰 Come vanno le finanze questo mese?</button>
+            <button class="chat-suggestion" onclick="App.chat.sendSuggestion(this)">🔁 Quali abitudini ho saltato questa settimana?</button>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chat-input" placeholder="Scrivi un messaggio… (Invio per inviare, Shift+Invio per a capo)" rows="1"></textarea>
+            <button class="btn btn-primary" id="btn-chat-send">Invia</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── STUDIO ─────────────────────────────────────────────────────────── -->
+    <section id="s-studio" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Studio</div>
+          <div class="section-subtitle">Cartelle, appunti, file e scanner con AI integrata</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="input" id="studio-search" placeholder="🔍 Cerca…" style="width:200px;" />
+          <button class="btn btn-ghost btn-sm" id="btn-add-folder">📁 Nuova cartella</button>
+          <button class="btn btn-primary" id="btn-add-item">+ Aggiungi</button>
+        </div>
+      </div>
+
+      <div class="studio-layout">
+        <!-- Pannello cartelle -->
+        <div class="studio-sidebar">
+          <div class="studio-sidebar-header">
+            <span style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;">Cartelle</span>
+          </div>
+          <div id="studio-folders-tree"></div>
+          <div class="studio-folder-item all-items active" data-id="all" onclick="App.studio.selectFolder(null)">
+            <span class="studio-folder-icon">📋</span>
+            <span class="studio-folder-name">Tutti gli elementi</span>
+          </div>
+        </div>
+
+        <!-- Pannello contenuto -->
+        <div class="studio-content">
+          <div class="studio-content-header" id="studio-content-header">
+            <span id="studio-folder-title" style="font-size:15px;font-weight:600;color:var(--text-1);">Tutti gli elementi</span>
+          </div>
+          <div id="studio-items-grid"></div>
+        </div>
+
+        <!-- Pannello dettaglio item -->
+        <div class="studio-detail" id="studio-detail" style="display:none;">
+          <div class="studio-detail-header">
+            <input type="text" class="studio-item-title-input" id="studio-item-title" placeholder="Titolo" />
+            <button class="btn-icon" id="btn-close-detail" onclick="App.studio.closeDetail()">✕</button>
+          </div>
+          <textarea class="studio-item-body" id="studio-item-body" placeholder="Scrivi qui i tuoi appunti…"></textarea>
+          <div class="studio-detail-toolbar">
+            <input type="text" class="note-tags-input" id="studio-item-tags" placeholder="tag1, tag2" style="flex:1;" />
+            <div class="studio-ai-actions">
+              <button class="btn btn-sm" style="background:rgba(99,102,241,0.15);color:var(--accent);border:1px solid rgba(99,102,241,0.3);" onclick="App.studio.aiAction('summarize')">✨ Riassumi</button>
+              <button class="btn btn-sm" style="background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.3);" onclick="App.studio.aiAction('schema')">🗂️ Schematizza</button>
+              <button class="btn btn-sm" style="background:rgba(245,158,11,0.15);color:var(--amber);border:1px solid rgba(245,158,11,0.3);" onclick="App.studio.aiAction('humanize')">💬 Umanizza</button>
+              <button class="btn btn-sm" style="background:rgba(168,85,247,0.15);color:var(--violet);border:1px solid rgba(168,85,247,0.3);" onclick="App.studio.aiAction('organize')">🧠 Organizza</button>
+            </div>
+          </div>
+          <!-- Risultato AI -->
+          <div id="studio-ai-result" style="display:none;" class="studio-ai-result">
+            <div class="studio-ai-result-header">
+              <span id="studio-ai-result-label" style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;"></span>
+              <button class="btn-icon" onclick="document.getElementById('studio-ai-result').style.display='none'">✕</button>
+            </div>
+            <div class="studio-ai-result-body" id="studio-ai-result-body"></div>
+          </div>
+          <div class="studio-detail-footer">
+            <button class="btn btn-ghost btn-sm" id="btn-studio-scan">📷 Scanner</button>
+            <span id="studio-item-date" style="font-size:11px;color:var(--text-3);flex:1;text-align:center;"></span>
+            <button class="btn btn-danger btn-sm" id="btn-delete-item">Elimina</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
-<!-- ── MODAL OVERLAY (unico, contenuto dinamico) ────────────────────────── -->
+<!-- ── MODAL OVERLAY ─────────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="modal-overlay">
-  <div class="modal" id="modal" role="dialog" aria-modal="true">
-    <!-- contenuto iniettato via JS -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- ── SCANNER MODAL ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="scanner-overlay">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <span class="modal-title">📷 Scanner</span>
+      <button class="btn-icon" onclick="App.studio.closeScanner()">✕</button>
+    </div>
+    <div style="text-align:center;">
+      <video id="scanner-video" style="width:100%;border-radius:var(--radius-md);background:#000;max-height:360px;" autoplay playsinline></video>
+      <canvas id="scanner-canvas" style="display:none;"></canvas>
+      <img id="scanner-preview" style="display:none;width:100%;border-radius:var(--radius-md);max-height:360px;object-fit:contain;" />
+    </div>
+    <div class="modal-footer" style="margin-top:12px;">
+      <button class="btn btn-ghost" onclick="App.studio.closeScanner()">Annulla</button>
+      <button class="btn btn-ghost" id="btn-scanner-retake" style="display:none;" onclick="App.studio.scannerRetake()">🔄 Riprendi</button>
+      <button class="btn btn-primary" id="btn-scanner-capture" onclick="App.studio.scannerCapture()">📸 Scatta</button>
+      <button class="btn btn-primary" id="btn-scanner-use" style="display:none;" onclick="App.studio.scannerUse()">✓ Usa immagine</button>
+    </div>
   </div>
 </div>
 

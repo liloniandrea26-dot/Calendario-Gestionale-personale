@@ -8,6 +8,7 @@
     "build": "electron-builder --win"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
