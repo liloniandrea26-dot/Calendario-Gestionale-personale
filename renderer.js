@@ -2047,9 +2047,16 @@ App.openSettings = async function() {
         Ottieni la tua key su <span style="color:var(--accent);">console.anthropic.com</span> → API Keys.
         Necessaria per Chat AI e funzioni AI nello Studio.
       </div>
-      <input type="password" class="input" id="settings-api-key"
-        placeholder="sk-ant-api03-…"
-        value="${currentKey}" />
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" class="input" id="settings-api-key"
+          placeholder="sk-ant-api03-…"
+          value="${currentKey}"
+          autocomplete="off" spellcheck="false"
+          style="font-family:monospace;font-size:12px;flex:1;" />
+        <button class="btn btn-ghost btn-sm" id="btn-paste-key" title="Incolla dagli appunti" style="flex-shrink:0;white-space:nowrap;">
+          📋 Incolla
+        </button>
+      </div>
       ${masked ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px;">Key attuale: ${masked}</div>` : ''}
     </div>
 
@@ -2070,6 +2077,24 @@ App.openSettings = async function() {
       <button class="btn btn-primary" id="btn-save-settings">Salva</button>
     </div>
   `);
+
+  // Bottone incolla dagli appunti
+  $('#btn-paste-key').onclick = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      $('#settings-api-key').value = text.trim();
+      $('#settings-api-key').focus();
+      showToast('API key incollata', 'success');
+    } catch(e) {
+      // Fallback: porta il focus sul campo e triggera un paste nativo
+      const input = $('#settings-api-key');
+      input.focus();
+      document.execCommand('paste');
+    }
+  };
+
+  // Focus automatico sul campo all'apertura
+  setTimeout(() => $('#settings-api-key')?.focus(), 120);
 
   $('#btn-test-ai').onclick = async () => {
     const key = $('#settings-api-key').value.trim();

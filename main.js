@@ -51,6 +51,7 @@ app.on('window-all-closed', () => {
 app.on('web-contents-created', (_, contents) => {
   contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
     if (permission === 'media') callback(true);
+    else if (permission === 'clipboard-read') callback(true);
     else callback(false);
   });
 });
