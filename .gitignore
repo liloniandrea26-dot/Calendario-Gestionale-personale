@@ -1,0 +1,6 @@
+node_modules/
+data/organizer.db
+dist/
+out/
+startup.log
+*.log
